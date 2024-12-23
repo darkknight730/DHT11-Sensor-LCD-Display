@@ -1,0 +1,67 @@
+/*
+  dieser code liest die temperatur und luftfeuchtigkeit von einem dht11 
+  sensor ab und zeigt sie auf einem i2c lcd display an 
+*/
+
+#include <DHT.h>               //bindet die nötigen bibliotheken ein
+#include <DHT_U.h>
+#include <LiquidCrystal_I2C.h>
+
+#define DHTPIN 2            //definiert pin 2 als den sensorpin
+#define DHTTYPE DHT11       //sagt welcher DHT sensor benutzt wird 
+
+DHT dht(DHTPIN,DHTTYPE);     //kreiert ein dht objekt
+LiquidCrystal_I2C lcd(0x27,16,2);  //legt die grösse des lcd displays fest 
+
+void setup() {
+  lcd.init();             //initialisiert die kommunikation mit dem lcd
+  lcd.clear();            //löscht bisherig angezeigte informationen
+  lcd.backlight();        //macht die hintergrundbeleuchtung an
+  dht.begin();            //beginnt die kommunikation mit dem sensor
+}
+  
+
+void loop() {
+  digitalWrite(4,HIGH);
+  delay(10000);
+  delay(2000);                                //wartet 2 sek zwischen den messungen
+  //da der sensor sehr langsam ist können die messungen bis zu 2 sekunden alt sein 
+  //es dauert etwa 250ms die feuchtigkeit oder temperatur zu lesen
+  float h = dht.readHumidity();              //liest den feuchtigkeitswert              
+  float t = dht.readTemperature();           //liest die temperatur in celsius(standart)
+  float f = dht.readTemperature(true);       //um die temperatur in farenheit zu lesene (isFahrenheit = true)
+
+  //überpfrüft ob das lesen gescheitert ist oder zu früh verlassen wurde(um es erneut zu versuschen)
+  if (isnan(h) || isnan(t) || isnan(f)) {
+    lcd.println(F("Failed to read from DHT sensor!"));  //wenn es einen fehler gab wir dieser text 
+    return;                                             //angezeigt und das verfahren startet erneut
+  }
+  //berechnet den hitze index (false um es in celsius zu machen)
+  float hif = dht.computeHeatIndex(f,h);
+  float hic = dht.computeHeatIndex(t,h,false);
+
+    // Löscht das Display nur, wenn es notwendig ist
+  lcd.clear();
+  
+  // Zeigt Feuchtigkeit und Temperatur an
+  lcd.setCursor(0, 0);
+  lcd.print(F("Humid: "));
+  lcd.print(h);
+  lcd.print(F("%"));
+
+  // Setzt den Cursor auf die nächste Zeile
+  lcd.setCursor(0, 1);
+  lcd.print(F("Temp: "));
+  lcd.print(t);
+  lcd.print(F(" C"));
+  
+  
+  
+  // Optional: Zeigt den Hitzeindex an
+  // lcd.setCursor(0, 2);
+  // lcd.print(F("Heat Index: "));
+  // lcd.print(hic);
+  // lcd.print(F("°C"));
+
+  delay(2000);  // Wartet 2 Sekunden für die nächste Messung
+}
